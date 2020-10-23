@@ -14,11 +14,44 @@ include_directories(
  ${project_interface_INCLUDE_DIRS}
 )
 
+## add executables
+
+add_executable(calibrate
+   src/camera_calibration.cpp
+)
+
+add_executable(demo
+   src/demo_full_example.cpp
+)
+
+add_executable(match_template
+   src/match_template.cpp
+)
+
+
 ## CREATE EXECUTABLE LIBRARY
 add_library(student SHARED
    src/student_interface.cpp
+   ##src/camera_calibration.cpp
+   src/extrincic_calibration.cpp
+   src/findRobot.cpp
+   ##src/digit_template_match.cpp
+   src/process_map.cpp
 )
 
+
 target_link_libraries(student
+  ${OpenCV_LIBRARIES}  
+)
+
+target_link_libraries(demo
+  ${OpenCV_LIBRARIES}
+)
+
+target_link_libraries(calibrate
+  ${OpenCV_LIBRARIES}
+)
+
+target_link_libraries(match_template
   ${OpenCV_LIBRARIES}  
 )
