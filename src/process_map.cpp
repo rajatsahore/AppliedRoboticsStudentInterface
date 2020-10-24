@@ -111,52 +111,110 @@ bool processObstacles(const cv::Mat& hsv_img, const double scale, std::vector<Po
   }
 
   bool processVictims(const cv::Mat& hsv_img, const double scale, std::vector<std::pair<int,Polygon>>& victim_list){
+const double MIN_AREA_SIZE = 100;
     
     // Find green regions
-    cv::Mat green_mask;
+    // Display original image
+  cv::imshow("Original", hsv_img);
+  
+  // Convert color space from BGR to HSV
+  //cv::Mat hsv_img;
+  //cv::cvtColor(img, hsv_img, cv::COLOR_BGR2HSV);
+  
+  
+  // Find green regions
+  cv::Mat green_mask;
+  cv::inRange(hsv_img, cv::Scalar(45, 40, 40), cv::Scalar(75, 255, 255), green_mask);
+  
+  // Apply some filtering
+  cv::Mat kernel = cv::getStructuringElement(cv::MORPH_RECT, cv::Size((2*2) + 1, (2*2)+1));
+  cv::dilate(green_mask, green_mask, kernel);
+  cv::erode(green_mask, green_mask, kernel);
+  
+  // Display image
+  cv::imshow("GREEN_filter", green_mask);
+  
+  
+  
+  // Find contours
+  std::vector<std::vector<cv::Point>> contours, contours_approx;
+  std::vector<cv::Point> approx_curve;
+  cv::Mat contours_img;
+
+  contours_img = hsv_img.clone();
+  cv::findContours(green_mask, contours, cv::RETR_EXTERNAL, cv::CHAIN_APPROX_SIMPLE);  
+    
+  std::vector<cv::Rect> boundRect(contours.size());
+  for (int i=0; i<contours.size(); ++i)
+  {
+    double area = cv::contourArea(contours[i]);
+    //if (area < MIN_AREA_SIZE) continue; // filter too small contours to remove false positives
+    approxPolyDP(contours[i], approx_curve, 2, true);
+    contours_approx = {approx_curve};
+    drawContours(contours_img, contours_approx, -1, cv::Scalar(0,170,220), 3, cv::LINE_AA);
+    boundRect[i] = boundingRect(cv::Mat(approx_curve)); // find bounding box for each green blob
+  }
+  cv::imshow("Original", contours_img);
+  cv::waitKey(0);
      
-    cv::inRange(hsv_img, cv::Scalar(45, 50, 26), cv::Scalar(100, 255, 255), green_mask);
-
-
-    std::vector<std::vector<cv::Point>> contours, contours_approx;
-    std::vector<cv::Point> approx_curve;
-    //cv::Mat contours_img;
-
-    // Process red mask
-    //contours_img = hsv_img.clone();
-    cv::findContours(green_mask, contours, cv::RETR_EXTERNAL, cv::CHAIN_APPROX_SIMPLE);
-    //drawContours(contours_img, contours, -1, cv::Scalar(40,190,40), 1, cv::LINE_AA);
-    //std::cout << "N. contours: " << contours.size() << std::endl;
-    int victim_id = 0;
-    for (int i=0; i<contours.size(); ++i)
-    {
-
-      const double area = cv::contourArea(contours[i]);
-
-      if(area < 500) continue;
-
-      //std::cout << (i+1) << ") Contour size: " << contours[i].size() << std::endl;
-      approxPolyDP(contours[i], approx_curve, 10, true);
-      if(approx_curve.size() < 6) continue;
-
-      Polygon scaled_contour;
-      for (const auto& pt: approx_curve) {
-        scaled_contour.emplace_back(pt.x/scale, pt.y/scale);
+  
+  cv::Mat green_mask_inv, filtered(hsv_img.rows, hsv_img.cols, CV_8UC3, cv::Scalar(255,255,255));
+  cv::bitwise_not(green_mask, green_mask_inv); // generate binary mask with inverted pixels w.r.t. green mask -> black numbers are part of this mask
+  
+  cv::imshow("Numbers", green_mask_inv);
+  cv::waitKey(0);
+  
+  // Load digits template images
+  std::vector<cv::Mat> templROIs;
+  for (int i=0; i<=10; ++i) {
+    templROIs.emplace_back(cv::imread("../imgs/template/" + std::to_string(i) + ".png"));
+  }  
+  
+  hsv_img.copyTo(filtered, green_mask_inv);   // create copy of image without green shapes
+  
+  kernel = cv::getStructuringElement(cv::MORPH_RECT, cv::Size((2*2) + 1, (2*2)+1));
+  std::cout << " 1 2 3  " << std::endl;
+  
+  // For each green blob in the original image containing a digit
+  for (int i=0; i<boundRect.size(); ++i)
+  {
+    cv::Mat processROI(filtered, boundRect[i]); // extract the ROI containing the digit
+    
+    if (processROI.empty()) continue;
+    
+    //cv::resize(processROI, processROI, cv::Size(200, 200)); // resize the ROI
+    //cv::threshold( processROI, processROI, 100, 255, 0 ); // threshold and binarize the image, to suppress some noise
+    
+    // Apply some additional smoothing and filtering
+    //cv::erode(processROI, processROI, kernel);
+    //cv::GaussianBlur(processROI, processROI, cv::Size(3, 3), 2, 2);
+    //cv::erode(processROI, processROI, kernel);
+    
+    // Show the actual image used for the template matching
+    cv::imshow("ROI", processROI);
+    
+    // Find the template digit with the best matching
+    double maxScore = 0;
+    int maxIdx = -1;
+    for (int j=0; j<templROIs.size(); ++j) {
+      cv::Mat result;
+      cv::matchTemplate(processROI, templROIs[j], result, cv::TM_CCOEFF);
+      double score;
+      cv::minMaxLoc(result, nullptr, &score); 
+      if (score > maxScore) {
+        maxScore = score;
+        maxIdx = j;
       }
-      victim_list.push_back({victim_id++, scaled_contour});
-      //contours_approx = {approx_curve};
-      //drawContours(contours_img, contours_approx, -1, cv::Scalar(0,170,220), 3, cv::LINE_AA);
-      //std::cout << "   Approximated contour size: " << approx_curve.size() << std::endl;
     }
-
-
-    // cv::imshow("Original", contours_img);
-    // cv::waitKey(1);
+    
+    std::cout << "Best fitting template: " << maxIdx << std::endl;
+    
+    cv::waitKey(0);
     
     return true;
   }
 
-
+}
 
   bool processMap(const cv::Mat& img_in, const double scale, std::vector<Polygon>& obstacle_list, std::vector<std::pair<int,Polygon>>& victim_list, Polygon& gate, const std::string& config_folder){
 

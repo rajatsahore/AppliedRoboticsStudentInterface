@@ -67,7 +67,7 @@ void processImage(const std::string& filename)
   cv::bitwise_not(green_mask, green_mask_inv); // generate binary mask with inverted pixels w.r.t. green mask -> black numbers are part of this mask
   
   cv::imshow("Numbers", green_mask_inv);
-  cv::waitKey(10);
+  cv::waitKey(0);
   
   // Load digits template images
   std::vector<cv::Mat> templROIs;
@@ -114,7 +114,7 @@ void processImage(const std::string& filename)
     
     std::cout << "Best fitting template: " << maxIdx << std::endl;
     
-    cv::waitKey(30);
+    cv::waitKey(0);
   }
   
 }
