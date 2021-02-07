@@ -5,6 +5,7 @@
 #include "dubins.hpp"
 #include "utils.hpp"
 
+
 using namespace std;
 
 // Sinc() function
