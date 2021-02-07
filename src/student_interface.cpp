@@ -11,7 +11,7 @@
 #include <experimental/filesystem>
 #include <sstream>
 
-
+#include "dubins.hpp"
 
 
 namespace student {
@@ -100,8 +100,45 @@ namespace student {
   }
 
 
-  bool planPath(const Polygon& borders, const std::vector<Polygon>& obstacle_list, const std::vector<std::pair<int,Polygon>>& victim_list, const Polygon& gate, const float x, const float y, const float theta, Path& path){
-    throw std::logic_error( "STUDENT FUNCTION - PLAN PATH - NOT IMPLEMENTED" );     
+ bool planPath(const Polygon& borders, const std::vector<Polygon>& obstacle_list, const std::vector<std::pair<int,Polygon>>& victim_list, const Polygon& gate, const float x, const float y, const float theta, Path& path){
+
+ 
+  //Test dubins
+  double x1=0.2;
+  double x2=0.9;
+  float x3= 1.4;
+
+  double y1=0.2;
+  double y2=0.8;
+  float y3=0.2;
+
+  double theta1= 0.0;
+  double theta2= 0.0;
+  float theta3= 0.0;
+
+  double s;
+  int npts=50;
+
+  int kmax=10;
+  dubinsCurve dubins={};
+
+               //-----------INITIAL POINT TO GOAL PATH-----------------
+
+              dubins_shortest_path(dubins, x1, y1, theta1, x2, y2, theta2, kmax);
+              discretize_arc(dubins.arc_1, s, npts, path);
+              discretize_arc(dubins.arc_2, s, npts, path);
+              discretize_arc(dubins.arc_3, s, npts, path);
+
+
+  std::cout << "inside planPath" << std::endl;
+  float xc = 0, yc = 1.5, r = 1.4;
+  float ds = 0.05;
+  for (float theta = -M_PI/2, s = 0; theta<(-M_PI/2 + 1.2); theta+=ds/r, s+=ds) {
+      path.points.emplace_back(s, xc+r*std::cos(theta), yc+r*std::sin(theta), theta+M_PI/2, 1./r);    
+  }
+
+  return true;
+    //throw std::logic_error( "STUDENT FUNCTION - PLAN PATH - NOT IMPLEMENTED" );     
   }
 
 

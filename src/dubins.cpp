@@ -17,7 +17,7 @@ double sinc(double t){
         s = sin(t)/t;
     }
 
-    return s;
+    return s; 
 }
 
 // Normalize an angle (in range [0,2Pi])

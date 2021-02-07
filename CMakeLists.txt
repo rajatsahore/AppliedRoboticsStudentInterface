@@ -39,6 +39,14 @@ add_library(student SHARED
    src/process_map.cpp
 )
 
+add_library(dubins SHARED
+   src/dubins.cpp
+)
+
+target_link_libraries(student
+  ${OpenCV_LIBRARIES} 
+  dubins
+)
 
 target_link_libraries(student
   ${OpenCV_LIBRARIES}  
@@ -55,3 +63,5 @@ target_link_libraries(calibrate
 target_link_libraries(match_template
   ${OpenCV_LIBRARIES}  
 )
+ 
+
