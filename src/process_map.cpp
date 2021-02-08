@@ -11,6 +11,7 @@
 #include <experimental/filesystem>
 #include <sstream>
 
+#include "clipper/clipper.hpp"
 
 namespace student {
 
@@ -57,7 +58,44 @@ bool processObstacles(const cv::Mat& hsv_img, const double scale, std::vector<Po
     //std::cout << std::endl;
     //cv::imshow("Original", contours_img);
     //cv::waitKey(1);
+    std::vector<Polygon> inflated_obstacles;
+ 
+    const double INT_ROUND = 2000.;
+ 
+    for (int obs = 0; obs < obstacle_list.size(); ++obs) {
+ 
+        ClipperLib::Path srcPoly;
+        ClipperLib::Paths newPoly;
+        ClipperLib::ClipperOffset co;
+ 
+    // Iterate through obstacles
+        for (int ver = 0; ver < obstacle_list[obs].size(); ++ver){
+            int x = obstacle_list[obs][ver].x * INT_ROUND;
+            int y = obstacle_list[obs][ver].y * INT_ROUND;
+            // Add list of points to path
+            srcPoly << ClipperLib::IntPoint(x,y);
+        }
+ 
+    // Provides methods to offset given path
+        co.AddPath(srcPoly, ClipperLib::jtSquare, ClipperLib::etClosedPolygon);
 
+        co.Execute(newPoly, 50);    
+        for (const ClipperLib::Path &path: newPoly){
+            // Obstacle obst =  data structure for current obstacle
+            Polygon obst;
+            for (const ClipperLib::IntPoint &pt: path){
+                double x = pt.X / INT_ROUND;
+                double y = pt.Y / INT_ROUND;
+                // Add vertex (x,y) to current obstacle
+                obst.emplace_back(x,y);
+            }
+            // Close and export current obstacle
+            inflated_obstacles.push_back(obst);
+            obstacle_list[obs] = obst;
+        }
+   
+    }
+ 
     return true;
   }
 
