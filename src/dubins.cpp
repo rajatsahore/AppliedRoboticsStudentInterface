@@ -11,7 +11,7 @@ using namespace std;
 // Sinc() function
 double sinc(double t){
 
-    double s;
+    double s; 
     if (abs(t) < 0.002){
         s = 1 - pow(t,2.0)/6.0*(1.0-pow(t,2.0)/20.0);
     } else {
