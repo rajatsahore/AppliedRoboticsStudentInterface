@@ -142,6 +142,7 @@ bool processObstacles(const cv::Mat& hsv_img, const double scale, std::vector<Po
     
     // Find purple regions
     cv::Mat green_mask;
+    //cv::Mat purple_mask;
     //Exam params
     cv::inRange(hsv_img, cv::Scalar(20, 50, 62), cv::Scalar(51, 255, 162), green_mask);   
 
@@ -215,7 +216,7 @@ cv::Mat green_mask;
     //cv::inRange(hsv_img, cv::Scalar(13, 68, 41), cv::Scalar(86, 255, 80), green_mask_victims);
     //cv::inRange(hsv_img, cv::Scalar(15, 65, 40), cv::Scalar(85, 255, 95), green_mask_victims);
     // Dark w/ light //exam values
-    cv::inRange(hsv_img, cv::Scalar(45, 50, 26), cv::Scalar(100, 255, 255), green_mask);
+    cv::inRange(hsv_img, cv::Scalar(40, 40, 50), cv::Scalar(75, 230, 160), green_mask);
 
     // Apply some filtering
     // Create the kernel of the filter i.e. a rectangle with dimension 3x3
@@ -278,7 +279,7 @@ cv::Mat green_mask;
     // Load digits template images
     std::vector<cv::Mat> templROIs;
     for (int i=1; i<=5; ++i) {
-      auto num_template = cv::imread("template/" + std::to_string(i) + ".png");
+      auto num_template = cv::imread("/home/ubuntu/workspace/project/src/template/" + std::to_string(i) + ".png");
       // flip the template to get the shape of number in the unwarped ground image
       cv::flip(num_template, num_template, 1);
       // Store the template in templROIs (vector of mat)
