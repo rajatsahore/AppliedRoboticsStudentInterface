@@ -12,6 +12,10 @@
 #include <sstream>
 
 #include "dubins.hpp"
+#include "ompl_planning.hpp"
+#include "planPath.hpp"
+#include "utils.hpp"
+#include "clipper/clipper.hpp"
 
 
 namespace student {
@@ -100,46 +104,274 @@ namespace student {
   }
 
 
- bool planPath(const Polygon& borders, const std::vector<Polygon>& obstacle_list, const std::vector<std::pair<int,Polygon>>& victim_list, const Polygon& gate, const float x, const float y, const float theta, Path& path){
-
- 
-  //Test dubins
-  double x1=0.2;
-  double x2=0.9;
-  float x3= 1.4;
-
-  double y1=0.2;
-  double y2=0.8;
-  float y3=0.2;
-
-  double theta1= 0.0;
-  double theta2= 0.0;
-  float theta3= 0.0;
-
-  double s;
-  int npts=50;
-
-  int kmax=10;
-  dubinsCurve dubins={};
-
-               //-----------INITIAL POINT TO GOAL PATH-----------------
-
-              dubins_shortest_path(dubins, x1, y1, theta1, x2, y2, theta2, kmax);
-              discretize_arc(dubins.arc_1, s, npts, path);
-              discretize_arc(dubins.arc_2, s, npts, path);
-              discretize_arc(dubins.arc_3, s, npts, path);
 
 
-  std::cout << "inside planPath" << std::endl;
-  float xc = 0, yc = 1.5, r = 1.4;
-  float ds = 0.05;
-  for (float theta = -M_PI/2, s = 0; theta<(-M_PI/2 + 1.2); theta+=ds/r, s+=ds) {
-      path.points.emplace_back(s, xc+r*std::cos(theta), yc+r*std::sin(theta), theta+M_PI/2, 1./r);    
-  }
+double gate_angle(Polygon borders,double gateX,double gateY){
 
-  return true;
-    //throw std::logic_error( "STUDENT FUNCTION - PLAN PATH - NOT IMPLEMENTED" );     
-  }
+        double gateAngle;    
+        if (fabs(gateX - borders[0].x) < fabs(gateX - borders[1].x)){// Left
+            if (fabs(gateY - borders[0].y) < fabs(gateY - borders[3].y)){ // Bottom-left        
+                if (fabs(gateY - borders[0].y) < fabs(gateX - borders[0].x)){// Horizontal orientaton
+                    gateAngle = -M_PI/2;
+                } else {// Vertical Oreintation
+                    gateAngle = M_PI;
+                }
+            } else {// Top-left
+                if (fabs(gateY - borders[3].y) < fabs(gateX - borders[0].x)){// Horizontal Oreintation
+                    gateAngle = M_PI/2;
+                } else {// Vertical orientation
+                    gateAngle = M_PI;
+                }
+            }
+        } else {// Right
+            if (fabs(gateY - borders[0].y) < fabs(gateY - borders[3].y)){// Bottom-right
+                if (fabs(gateY - borders[0].y) < fabs(gateX - borders[1].x)){// Horizontal
+                    gateAngle = -M_PI/2;
+                } else {// Vertical
+                    gateAngle = 0;
+                }
+            } else {// Top-right
+                if (fabs(gateY - borders[3].y) < fabs(gateX - borders[1].x)){// Horizontal
+                    gateAngle = M_PI/2;
+                } else {// Vertical
+                    gateAngle = 0;
+                }
+            }    
+        }
+        return gateAngle;                
+    }
+
+double internal_angle(double angle1, double angle2){
+        if(angle1-angle2 >=0 && angle1-angle2 < M_PI)
+            return angle1-angle2;
+        else if(angle1-angle2 <0 && angle2-angle1 < M_PI)
+            return angle2-angle1;
+        else if(angle1-angle2 >=0 && angle1-angle2 > M_PI)
+            return 2*M_PI-(angle1-angle2);
+        else if(angle1-angle2 <0 && angle2-angle1 > M_PI)
+            return 2*M_PI-(angle2-angle1);
+        return angle2;
+    }
+
+std::pair<double, double> get_center(const Polygon &poly) {
+        double cx = 0;
+        double cy = 0;
+        for (int pt = 0; pt < poly.size(); pt++){
+            cx += poly[pt].x;
+            cy += poly[pt].y;
+        }
+        cx /= poly.size();
+        cy /= poly.size();
+        return std::make_pair(cx, cy);
+    }
+
+
+double angle_dubins(Pose first, Pose second, Pose third) {
+        double temp = 0;
+        double distance1 = sqrt(pow(second.x - first.x, 2) + pow(second.y - first.y, 2)); // distance difference
+        double distance2 = sqrt(pow(third.x - second.x, 2) + pow(third.y - second.y, 2));
+        double angle1 = atan2((first.y - second.y), (first.x - second.x));// angle difference
+        double angle2 = atan2((third.y - second.y), (third.x - second.x));
+        angle1<0? angle1 = 2*M_PI+angle1: angle1+=0; 
+        angle2<0? angle2 = 2*M_PI+angle2: angle2+=0;
+        angle1 < angle2 ? temp = std::fmod((((angle1+angle2)/2) + M_PI/2), 2*M_PI): temp = std::fmod((((angle1+angle2)/2) - M_PI/2), 2*M_PI);;
+        temp<0?temp = 2*M_PI+temp: temp+=0; 
+
+        if(internal_angle(angle1, angle2) < 0.20){ // If the line segments doesnt have big difference, then they are on almost same path and clothoids/dubins can handle easily
+	        return temp;
+        }
+        double final_angle = temp;
+        double distanceFactor = (distance1 > distance2) ? 1 - distance2/distance1 : 1 - distance1/distance2;// calculate the distance factor for angle difference in first and second segment 
+        double a_minus = std::fmod(temp - (internal_angle(angle2,temp) * distanceFactor), 2*M_PI);// angle which is differnce of existing angle difference and angle difference between second segment and new slope
+        double a_plus = std::fmod(temp + (internal_angle(angle2,temp) * distanceFactor), 2*M_PI);
+// angle which is sum of existing angle difference and angle difference between second segment and new slope
+        double angle_a1_minus = internal_angle(angle2,a_minus);
+        double angle_a1_plus = internal_angle(angle2,a_plus);
+        if(distance1 > distance2){ 
+            if(angle_a1_plus > angle_a1_minus){
+                final_angle = a_minus;
+            }else{
+                final_angle = a_plus;
+            }
+        }else if (distance2 > distance1){
+            if(angle_a1_plus > angle_a1_minus){
+                final_angle = a_plus;
+            }else{
+                final_angle = a_minus;
+            }
+        }
+
+        final_angle = std::fmod(final_angle, 2*M_PI);
+        return final_angle;
+    }
+
+std::vector<Polygon> obstacleinflation(const std::vector<Polygon> ob,int offset_radius){
+        std::vector<Polygon> inflatedObstacles;
+        for(int i = 0; i < ob.size(); i++){
+            ClipperLib::Path srcPoly;
+            ClipperLib::Paths newPoly; 
+            ClipperLib::ClipperOffset co;
+            Polygon temp;
+            const double INT_ROUND = 1000; // Scaling constant 
+            // Put all points of obstacle obstacleusing clipper
+            for(size_t a = 0; a < ob[i].size(); ++a){
+                double x = ob[i][a].x * INT_ROUND;
+                double y = ob[i][a].y * INT_ROUND;
+                srcPoly << ClipperLib::IntPoint(x, y);
+            }
+            // If not a closed polygon
+            if(ob[i].size() == 3)
+            {
+                co.AddPath(srcPoly, ClipperLib::jtSquare, ClipperLib::etClosedLine);
+            }
+            else // If it is a closed polygon
+            {
+                co.AddPath(srcPoly, ClipperLib::jtSquare, ClipperLib::etClosedPolygon);
+            }
+
+            //Execute Clipper offset and return the new set of enlarged obstacles
+            co.Execute(newPoly, offset_radius);
+            for(const ClipperLib::Path &path: newPoly){
+                for(const ClipperLib::IntPoint &pt: path){
+                    double x = (double)pt.X / INT_ROUND;
+                    double y = (double)pt.Y / INT_ROUND;
+                    temp.emplace_back(x, y);
+                }
+            }
+
+            inflatedObstacles.emplace_back(temp);
+        }
+        return inflatedObstacles;
+}
+
+
+
+ bool planPath(const Polygon& borders, const std::vector<Polygon>& obstacle_list, 
+                 const std::vector<std::pair<int,Polygon>>& victim_list, const Polygon& gate, 
+                 const float x, const float y, const float theta, Path& path,
+                 const std::string& config_folder){
+//mission_1
+std::vector<Polygon> obsctacle_offset = obstacleinflation(obstacle_list,60);
+	std::vector<Point> goalCenter;
+	goalCenter.emplace_back(x, y);
+        for (int i = 0; i < victim_list.size(); i++){
+            Polygon currentVictim = std::get<1>(victim_list[i]);
+            std::pair<double, double> victimCenter = get_center(currentVictim);
+            goalCenter.emplace_back(victimCenter.first, victimCenter.second);
+        }
+	std::pair<double, double> gateCenter = get_center(gate);
+	double gateX = gateCenter.first;
+	double gateY = gateCenter.second;
+	goalCenter.emplace_back(gateCenter.first, gateCenter.second);
+	Path temp_path;
+	double MAX_X = (borders[1].x);
+	double MIN_X = (borders[0].x);
+	double MAX_Y = (borders[3].y);
+	double MIN_Y = (borders[0].y);
+	for (int i = 0; i < goalCenter.size()-1; i++){
+	
+        //std::pair<double, double> gateCenter = get_center(gate);
+	//auto start_rrt = high_resolution_clock::now();
+	auto space(std::make_shared<ob::RealVectorStateSpace>(2));
+
+	//Set world info
+	space->setBounds(0.0, std::max(MAX_X,MAX_Y));
+
+	// Construct a space information instance for this state space
+	auto si(std::make_shared<ob::SpaceInformation>(space));
+
+	// Set the object used to check which states in the space are valid
+	si->setStateValidityChecker(std::make_shared<ValidityChecker>(si,obsctacle_offset));
+
+	si->setup();
+
+	ob::ScopedState<> start(space);
+	ob::ScopedState<> goal(space);
+	//Goals setup
+	start->as<ob::RealVectorStateSpace::StateType>()->values[0] = goalCenter[i].x;
+	start->as<ob::RealVectorStateSpace::StateType>()->values[1] = goalCenter[i].y;
+	goal->as<ob::RealVectorStateSpace::StateType>()->values[0] = goalCenter[i+1].x;
+	goal->as<ob::RealVectorStateSpace::StateType>()->values[1] = goalCenter[i+1].y;
+
+
+
+	// Create the problem
+	auto pdef(std::make_shared<ob::ProblemDefinition>(si));
+
+	// Create the optimization objective
+	pdef->setOptimizationObjective(allocateObjective(si, OBJECTIVE_PATHLENGTH));
+
+	// Set the start and goal states
+	pdef->setStartAndGoalStates(start, goal);
+	ob::PlannerPtr optimizingPlanner;
+	// Select the planner
+	optimizingPlanner = allocatePlanner(si, PLANNER_RRTSTAR);
+	// Set the problem instance for our planner to solve
+	optimizingPlanner->setProblemDefinition(pdef);
+	optimizingPlanner->setup();
+
+	// attempt to solve the planning problem in the given runtime
+	ob::PlannerStatus solved = optimizingPlanner->solve(1.0);
+	if (solved)
+	{
+        // store the points
+	std::static_pointer_cast<og::PathGeometric>(pdef->getSolutionPath());
+	og::PathGeometric path( dynamic_cast< const og::PathGeometric& >(*pdef->getSolutionPath()));
+	const std::vector<ob::State*> &states = path.getStates();
+	ob::State *state;
+	Pose robot_pos;
+	robot_pos.x = x;
+	robot_pos.y = y;
+	if(i == 0 )
+                {
+                    temp_path.points.emplace_back(robot_pos);
+                }
+	for( size_t i = 1 ; i < states.size( ) ; ++i )
+	{
+	state = states[i]->as< ob::State >();
+	Pose temp;
+	temp.x = state->as<ob::RealVectorStateSpace::StateType>()->values[0];
+	temp.y = state->as<ob::RealVectorStateSpace::StateType>()->values[1];
+	temp_path.points.emplace_back(temp);
+	}
+	}
+	else{
+	cout<<"could not find a solution for goal"<<goal <<endl;
+	}
+	}
+	//print_path(temp_path);
+	
+	
+	
+	double sx,sy,st,ex,ey,et;
+	for(int iter=1;iter<temp_path.points.size();iter++)
+	{
+	if(iter == 1){
+	sx = x;
+	sy = y;   
+	st = theta;
+	}
+	ex = temp_path.points[iter].x;
+	ey = temp_path.points[iter].y;
+	et = angle_dubins(temp_path.points[iter-1],temp_path.points[iter],temp_path.points[iter+1]); // get approach angle between points
+
+	if(iter == temp_path.points.size()-1){
+	et = gate_angle(borders,gateX,gateY); 
+	}   
+	//cout<<"num of path points are" <<endl;
+	dubinsCurve dubins = {}; // dubins curve        
+	dubins_shortest_path(dubins, sx, sy, st, ex, ey, et, 15); // get dubins curve and discretize them
+  	int npts=50;
+	Path dubins_path;
+	dubins_path = getPath(dubins, npts);
+	path.points.insert(path.points.end(),dubins_path.points.begin(),dubins_path.points.end());
+	
+	sx = ex;
+	sy = ey;
+	st = et;
+	}
+	return true;
+	}
 
 
 }

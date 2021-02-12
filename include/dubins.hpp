@@ -122,5 +122,5 @@ void dubins_shortest_path(dubinsCurve& curve, double const& x0, double const& y0
 *  @param npts Number of points for the whole curve
 *  @return Output path structure
 */
- void discretize_arc(dubinsArc& full_arc, double& s, int& npts, Path& path);
+Path getPath(dubinsCurve curve,int npts);
 #endif

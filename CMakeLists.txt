@@ -6,12 +6,18 @@ add_compile_options(-std=c++11)
 
 find_package(OpenCV REQUIRED )
 find_package(project_interface REQUIRED )
+find_package(ompl REQUIRED)
+find_package(Boost REQUIRED program_options atomic)
+find_package(Eigen3)
+
 
 ## Specify additional locations of header files
 include_directories(
  include 
  ${OpenCV_INCLUDE_DIRS}
  ${project_interface_INCLUDE_DIRS}
+ ${OMPL_INCLUDE_DIRS}
+ ${CUSTOM_EIGEN}
 )
 
 ## add executables
@@ -24,9 +30,9 @@ add_executable(demo
    src/demo_full_example.cpp
 )
 
-add_executable(match_template
-   src/match_template.cpp
-)
+#add_executable(match_template
+   #src/match_template.cpp
+#)
 
 
 ## CREATE EXECUTABLE LIBRARY
@@ -35,8 +41,10 @@ add_library(student SHARED
    ##src/camera_calibration.cpp
    src/extrincic_calibration.cpp
    src/findRobot.cpp
+   #src/Mission_2.cpp
    ##src/digit_template_match.cpp
    src/process_map.cpp
+   #src/match_template.cpp
 )
 
 add_library(dubins SHARED
@@ -51,6 +59,7 @@ target_link_libraries(student
   ${OpenCV_LIBRARIES} 
   dubins
   polyclipping
+  ${OMPL_LIBRARIES}
 )
 
 target_link_libraries(student
@@ -65,8 +74,8 @@ target_link_libraries(calibrate
   ${OpenCV_LIBRARIES}
 )
 
-target_link_libraries(match_template
-  ${OpenCV_LIBRARIES}  
-)
+#target_link_libraries(match_template
+  #${OpenCV_LIBRARIES}  
+#)
  
 

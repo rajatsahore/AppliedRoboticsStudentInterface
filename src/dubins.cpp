@@ -259,17 +259,32 @@ void dubins_shortest_path(dubinsCurve& curve, double const& x0, double const& y0
 
 }
 
-void discretize_arc(dubinsArc& full_arc, double& s, int& npts, Path& path){
-
-	for (int i = 0; i <= npts; i++){
-		dubinsArc small_arc;
-		double s_local = full_arc.s/npts*i;
-		set_dubinsArc(small_arc, full_arc.x0, full_arc.y0, full_arc.th0, full_arc.k, s_local);
-
-		path.points.emplace_back(s_local, small_arc.xf, small_arc.yf, small_arc.thf, small_arc.k);
-
-		s += full_arc.s/npts;
-
-	}
-
+Path getPath(dubinsCurve c,int npts){
+    static double s_final = 0;
+    Path p;
+    double s_g = c.L/npts;
+    double s0;
+    for(int i = 0; i < floor(c.arc_1.s/s_g); i++){
+        s0 = s_g * i;
+        s_final += s_g;
+        dubinsArc small_arc;
+        set_dubinsArc(small_arc, c.arc_1.x0, c.arc_1.y0, c.arc_1.th0, c.arc_1.k, s0);
+        p.points.emplace_back(s_final,small_arc.xf,small_arc.yf,small_arc.thf,small_arc.k);
+    }
+    for(int i = 0; i < floor(c.arc_2.s/s_g); i++){
+        s0 = s_g * i;
+        s_final += s_g;
+        dubinsArc small_arc;
+        set_dubinsArc(small_arc, c.arc_2.x0, c.arc_2.y0, c.arc_2.th0, c.arc_2.k, s0);
+        p.points.emplace_back(s_final,small_arc.xf,small_arc.yf,small_arc.thf,small_arc.k);
+    }
+    for(int i = 0; i < floor(c.arc_3.s/s_g); i++){
+        s0 = s_g * i;
+        s_final += s_g;
+        dubinsArc small_arc;
+        set_dubinsArc(small_arc, c.arc_3.x0, c.arc_3.y0, c.arc_3.th0, c.arc_3.k, s0);
+        p.points.emplace_back(s_final,small_arc.xf,small_arc.yf,small_arc.thf,small_arc.k);
+    }
+    return p;
 }
+
