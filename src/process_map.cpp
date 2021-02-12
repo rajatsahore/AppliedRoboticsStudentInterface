@@ -55,11 +55,11 @@ bool processObstacles(const cv::Mat& hsv_img, const double scale, std::vector<Po
     // Find red regions: h values around 0 (positive and negative angle: [0,15] U [160,179])
     cv::Mat red_mask_low, red_mask_high, red_mask; 
 //exam image
-    //cv::inRange(hsv_img, cv::Scalar(0, 50, 40), cv::Scalar(40, 255, 255), red_mask_low);
-    //cv::inRange(hsv_img, cv::Scalar(160, 50, 40), cv::Scalar(180, 255, 255), red_mask_high);  
+    cv::inRange(hsv_img, cv::Scalar(0, 50, 40), cv::Scalar(40, 255, 255), red_mask_low);
+    cv::inRange(hsv_img, cv::Scalar(160, 50, 40), cv::Scalar(180, 255, 255), red_mask_high);  
 //simulation  
-    cv::inRange(hsv_img, cv::Scalar(0, 50, 50), cv::Scalar(40, 255, 255), red_mask_low);
-    cv::inRange(hsv_img, cv::Scalar(160, 50, 50), cv::Scalar(180, 255, 255), red_mask_high);
+    //cv::inRange(hsv_img, cv::Scalar(0, 50, 50), cv::Scalar(40, 255, 255), red_mask_low);
+    //cv::inRange(hsv_img, cv::Scalar(160, 50, 50), cv::Scalar(180, 255, 255), red_mask_high);
     cv::addWeighted(red_mask_low, 1.0, red_mask_high, 1.0, 0.0, red_mask); 
     
     // Filter (applying an erosion and dilation) the image
@@ -147,7 +147,7 @@ bool processObstacles(const cv::Mat& hsv_img, const double scale, std::vector<Po
 
 
     //Simulation
-    cv::inRange(hsv_img, cv::Scalar(45, 50, 45), cv::Scalar(80, 255, 255), green_mask);    
+    //cv::inRange(hsv_img, cv::Scalar(45, 50, 45), cv::Scalar(80, 255, 255), green_mask);    
     //cv::inRange(hsv_img, cv::Scalar(130, 10, 10), cv::Scalar(165, 255, 255), purple_mask);
     
     
@@ -214,8 +214,8 @@ cv::Mat green_mask;
     //cv::inRange(hsv_img, cv::Scalar(50, 80, 34), cv::Scalar(75, 255, 255), green_mask_victims); //Simulator
     //cv::inRange(hsv_img, cv::Scalar(13, 68, 41), cv::Scalar(86, 255, 80), green_mask_victims);
     //cv::inRange(hsv_img, cv::Scalar(15, 65, 40), cv::Scalar(85, 255, 95), green_mask_victims);
-    // Dark w/ light
-  cv::inRange(hsv_img, cv::Scalar(45, 50, 26), cv::Scalar(100, 255, 255), green_mask);
+    // Dark w/ light //exam values
+    cv::inRange(hsv_img, cv::Scalar(45, 50, 26), cv::Scalar(100, 255, 255), green_mask);
 
     // Apply some filtering
     // Create the kernel of the filter i.e. a rectangle with dimension 3x3

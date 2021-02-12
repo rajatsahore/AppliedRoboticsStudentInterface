@@ -23,14 +23,14 @@ bool findRobot(const cv::Mat& img_in, const double scale, Polygon& triangle, dou
               cv::COLOR_BGR2HSV);
 
   // Extract blue color region Simulation
-  cv::Mat blue_mask;    
-  cv::inRange(hsv_img, cv::Scalar(100, 120, 150), 
-    cv::Scalar(135, 255, 255), blue_mask);
+  //cv::Mat blue_mask;    
+  //cv::inRange(hsv_img, cv::Scalar(100, 120, 150), 
+  //cv::Scalar(135, 255, 255), blue_mask);
 
 // Extract blue color region Arena
-  //cv::Mat blue_mask;    
-  //cv::inRange(hsv_img, cv::Scalar(90, 50, 50), 
-    //cv::Scalar(140, 255, 255), blue_mask);
+  cv::Mat blue_mask;    
+  cv::inRange(hsv_img, cv::Scalar(90, 50, 50), 
+  cv::Scalar(140, 255, 255), blue_mask);
 
   // BLUE MASK on real world imgs contains noise
   // to get rid of the noise a possible solution is to use:
